@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Job Search</title>
+<style>
+  :root{
+    --bg:#fff; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --card:#fbfbfc;
+    --green:#047857; --amber:#b45309; --slate:#64748b; --accent:#1d4ed8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f1115; --fg:#e5e7eb; --muted:#9ca3af; --line:#262b36; --card:#151922;
+      --green:#34d399; --amber:#fbbf24; --slate:#94a3b8; --accent:#60a5fa; }
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{background:var(--bg);color:var(--fg)}
+  body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:0 18px}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 0 10px}
+  .top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  h1{font-size:18px;margin:0;letter-spacing:-.01em}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  input[type=search], input.note{
+    background:var(--card);border:1px solid var(--line);color:inherit;border-radius:7px;
+    padding:7px 10px;font:inherit;outline:none;
+  }
+  input[type=search]{width:200px}
+  input[type=search]:focus, input.note:focus{border-color:var(--accent)}
+  button{
+    background:var(--card);border:1px solid var(--line);color:inherit;border-radius:7px;
+    padding:7px 12px;font:inherit;cursor:pointer;
+  }
+  button:hover{border-color:var(--accent)}
+  .check{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
+  .meta{color:var(--muted);font-size:13px;margin-top:8px}
+  .counts{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:4px}
+  .count.m{color:var(--green)} .count.r{color:var(--amber)} .count.x{color:var(--slate)}
+  main{padding:16px 0 40px}
+  details.group{border:1px solid var(--line);border-radius:10px;margin-bottom:14px;overflow:hidden;background:var(--card)}
+  details.group>summary{
+    list-style:none;cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;
+    align-items:center;font-weight:600;
+  }
+  details.group>summary::-webkit-details-marker{display:none}
+  details.group[open]>summary{border-bottom:1px solid var(--line)}
+  details.match>summary{color:var(--green)}
+  details.review>summary{color:var(--amber)}
+  details.excluded>summary{color:var(--slate)}
+  .badge{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+  .job{display:flex;gap:14px;justify-content:space-between;padding:14px;border-top:1px solid var(--line);background:var(--bg)}
+  .job:first-child{border-top:0}
+  .job-body{min-width:0;flex:1}
+  .title{font-weight:600;color:var(--accent);text-decoration:none;font-size:15.5px}
+  .title:hover{text-decoration:underline}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:2px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+  .reason{font-size:13px;margin-top:7px;color:var(--fg)}
+  .skills{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  .chip{font-size:11.5px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+  .job-side{display:flex;flex-direction:column;gap:7px;align-items:flex-end;min-width:140px}
+  .apply{display:inline-block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;
+    border-radius:7px;padding:7px 16px;font-weight:600;font-size:13.5px}
+  .apply:hover{filter:brightness(1.08)}
+  .job-side .note{width:140px;font-size:13px;padding:5px 8px}
+  .empty{color:var(--muted);text-align:center;padding:48px 0}
+  .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:8px}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+  @media (max-width:620px){
+    .job{flex-direction:column}
+    .job-side{align-items:stretch;min-width:0}
+    .job-side .note{width:100%}
+    input[type=search]{width:100%}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Job Search</h1>
+      <div class="tools">
+        <input id="q" type="search" placeholder="Filter jobs…" />
+        <label class="check"><input id="hideApplied" type="checkbox" /> Hide applied</label>
+        <button id="refresh" type="button">Refresh</button>
+      </div>
+    </div>
+    <div id="meta" class="meta">Loading…</div>
+    <div id="counts" class="counts"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p id="empty" class="empty" hidden>
+    No results yet — ask in chat to run a search, then press <b>Refresh</b>.
+  </p>
+  <div id="list"></div>
+  <p class="foot">Ask in chat for fresh results. Data lives in <code>data/jobs.js</code>.</p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATE_KEY = "jobsearch.state.v1";
+  var BUCKETS = [
+    { id: "match", label: "Matches", open: true },
+    { id: "review", label: "Needs review", open: false },
+    { id: "excluded", label: "Excluded", open: false }
+  ];
+
+  var els = {
+    meta: document.getElementById("meta"),
+    counts: document.getElementById("counts"),
+    list: document.getElementById("list"),
+    q: document.getElementById("q"),
+    hideApplied: document.getElementById("hideApplied"),
+    empty: document.getElementById("empty"),
+    refresh: document.getElementById("refresh")
+  };
+
+  var data = null;
+
+  /* applied / notes survive every rewrite of data/jobs.js */
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(STATE_KEY) || "{}") || {}; } catch (e) { state = {}; }
+  function getState(url) {
+    if (!state[url]) state[url] = { applied: false, notes: "" };
+    return state[url];
+  }
+  function saveState() {
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function safeUrl(u) {
+    return /^https?:\/\//i.test(String(u || "")) ? String(u) : "#";
+  }
+  function normBucket(b) {
+    var v = String(b || "").toLowerCase();
+    return v === "match" || v === "review" || v === "excluded" ? v : "review";
+  }
+  function fmtDate(iso) {
+    if (!iso) return "not yet";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function card(job) {
+    var url = String(job.url || "");
+    var st = getState(url);
+    var href = esc(safeUrl(url));
+    var tags = [
+      job.experience ? '<span class="tag">' + esc(job.experience) + "</span>" : "",
+      job.source ? '<span class="tag">' + esc(job.source) + "</span>" : "",
+      job.posted ? '<span class="tag">' + esc(job.posted) + "</span>" : ""
+    ].join("");
+    var skills = Array.isArray(job.skills) && job.skills.length
+      ? '<div class="skills">' + job.skills.map(function (s) {
+          return '<span class="chip">' + esc(s) + "</span>";
+        }).join("") + "</div>"
+      : "";
+    return '<article class="job" data-url="' + esc(url) + '">' +
+      '<div class="job-body">' +
+        '<a class="title" href="' + href + '" target="_blank" rel="noopener noreferrer">' +
+          esc(job.title || "Untitled") + "</a>" +
+        '<div class="sub">' +
+          [job.company, job.location, job.salary].filter(Boolean).map(esc).join(" · ") +
+        "</div>" +
+        (tags ? '<div class="tags">' + tags + "</div>" : "") +
+        (job.reason ? '<div class="reason">' + esc(job.reason) + "</div>" : "") +
+        skills +
+      "</div>" +
+      '<div class="job-side">' +
+        '<a class="apply" href="' + href + '" target="_blank" rel="noopener noreferrer">Apply</a>' +
+        '<label class="check"><input type="checkbox" class="applied"' + (st.applied ? " checked" : "") + " /> Applied</label>" +
+        '<input class="note" type="text" placeholder="Note…" value="' + esc(st.notes || "") + '" />' +
+      "</div>" +
+    "</article>";
+  }
+
+  function applyFilter() {
+    var q = els.q.value.trim().toLowerCase();
+    var hideApplied = els.hideApplied.checked;
+    var jobs = els.list.querySelectorAll(".job");
+    for (var i = 0; i < jobs.length; i++) {
+      var article = jobs[i];
+      var text = article.textContent.toLowerCase();
+      var applied = article.querySelector(".applied");
+      var show = (!q || text.indexOf(q) !== -1) && !(hideApplied && applied && applied.checked);
+      article.hidden = !show;
+    }
+    var groups = els.list.querySelectorAll(".group");
+    for (var g = 0; g < groups.length; g++) {
+      var visible = groups[g].querySelector(".job:not([hidden])");
+      groups[g].hidden = !visible;
+    }
+  }
+
+  function render() {
+    var jobs = data && Array.isArray(data.jobs) ? data.jobs : [];
+
+    els.meta.textContent = jobs.length
+      ? "Updated " + fmtDate(data.generatedAt) + (data.query ? " · " + data.query : "")
+      : "No results yet";
+
+    var counts = { match: 0, review: 0, excluded: 0 };
+    for (var i = 0; i < jobs.length; i++) counts[normBucket(jobs[i].bucket)]++;
+
+    els.counts.innerHTML = jobs.length
+      ? '<span class="count m">' + counts.match + " matches</span>" +
+        '<span class="count r">' + counts.review + " need review</span>" +
+        '<span class="count x">' + counts.excluded + " excluded</span>"
+      : "";
+
+    els.empty.hidden = jobs.length > 0;
+
+    els.list.innerHTML = jobs.length
+      ? BUCKETS.map(function (b) {
+          var items = jobs.filter(function (j) { return normBucket(j.bucket) === b.id; });
+          if (!items.length) return "";
+          return '<details class="group ' + b.id + '"' + (b.open ? " open" : "") + ">" +
+            "<summary><span>" + b.label + '</span><span class="badge">' + items.length + "</span></summary>" +
+            '<div class="jobs">' + items.map(card).join("") + "</div>" +
+          "</details>";
+        }).join("")
+      : "";
+
+    applyFilter();
+  }
+
+  function load(initial) {
+    var script = document.createElement("script");
+    script.src = "data/jobs.js" + (initial ? "" : "?v=" + Date.now());
+    script.onload = function () {
+      if (window.JOBS) data = window.JOBS;
+      render();
+    };
+    script.onerror = function () {
+      if (initial) data = window.JOBS || null;
+      render();
+    };
+    document.head.appendChild(script);
+  }
+
+  els.list.addEventListener("change", function (e) {
+    var article = e.target.closest(".job");
+    if (!article) return;
+    var url = article.getAttribute("data-url");
+    if (!url) return;
+    var st = getState(url);
+    if (e.target.classList.contains("applied")) {
+      st.applied = e.target.checked;
+      saveState();
+      applyFilter();
+    } else if (e.target.classList.contains("note")) {
+      st.notes = e.target.value;
+      saveState();
+    }
+  });
+
+  els.list.addEventListener("input", function (e) {
+    if (!e.target.classList.contains("note")) return;
+    var article = e.target.closest(".job");
+    if (!article) return;
+    var url = article.getAttribute("data-url");
+    if (!url) return;
+    getState(url).notes = e.target.value;
+    saveState();
+  });
+
+  els.refresh.addEventListener("click", function () {
+    els.refresh.disabled = true;
+    els.refresh.textContent = "Refreshing…";
+    load(false);
+    setTimeout(function () {
+      els.refresh.disabled = false;
+      els.refresh.textContent = "Refresh";
+    }, 400);
+  });
+
+  els.q.addEventListener("input", applyFilter);
+  els.hideApplied.addEventListener("change", applyFilter);
+
+  load(true);
+})();
+</script>
+</body>
+</html>
