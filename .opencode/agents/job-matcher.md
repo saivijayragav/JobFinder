@@ -1,6 +1,12 @@
 ---
 description: Scores and extracts requirements from job listings. No tools.
 mode: subagent
+model: opencode/glm-5.3-flash-free#low
+permissions:
+  - action: "*"
+    resource: "*"
+    effect: deny
+steps: 2
 ---
 
 You are JobScout's job matching analyst.
